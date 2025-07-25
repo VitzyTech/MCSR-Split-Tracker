@@ -1,0 +1,7 @@
+advancmenti:
+    "minecraft:story/root"
+    "minecraft:story/enter_the_nether"
+    "minecraft:nether/find_bastion"
+    "minecraft:nether/find_fortress"
+    "minecraft:story/follow_ender_eye"
+    "minecraft:story/enter_the_end"
