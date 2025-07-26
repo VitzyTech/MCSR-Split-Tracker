@@ -11,60 +11,7 @@ def import_settings():
     return settings
 
 settings = import_settings()
-minecraft_dir = os.path.join(settings["minecraft_directory"], "saves")
-
-#sets the watchdog
-class AdvancementHandler(FileSystemEventHandler):
-    def __init__(self):
-        self.player_advancements = {}
-    def on_modified(self, event):        
-        #Event path
-        full_path = event.src_path.replace("\\", "/")
-        
-        #Check if is in advancments folder
-        if "/advancements/" in full_path:
-            #split the path
-            parts = full_path.split("/")
-            
-            try:
-                saves_index = parts.index("saves")
-                world_name = parts[saves_index + 1]
-            except (ValueError, IndexError):
-                return
-            
-            advancements_dir = os.path.join(minecraft_dir, world_name, "advancements")
-            
-            #reads the advancments
-            if os.path.exists(advancements_dir):
-                for filename in os.listdir(advancements_dir):
-                    if filename.endswith(".json"):
-                        file_path = os.path.join(advancements_dir, filename)
-                        with open(file_path, "r") as f:
-                            self.player_advancements = json.load(f)
-        return self.player_advancements
-
-def start_watchdog():
-    event_handler = AdvancementHandler()
-    observer = Observer()
-    observer.schedule(event_handler, minecraft_dir, recursive=True)
-    observer.start()
-    return event_handler
-
-#split tracker
-splits={
-    "OWERWORLD":"minecraft:story/root",
-    "NETHER":"minecraft:story/enter_the_nether",
-    "BASTION":"minecraft:nether/find_bastion",
-    "FORTRESS":"minecraft:nether/find_fortress",
-    "STRONGHOLD":"minecraft:story/follow_ender_eye",
-    "END":"minecraft:story/enter_the_end"
-}
-def split_tracker(player_advancements):
-    latest_split = None
-    for split_name, advancement_id in splits.items():
-        if advancement_id in player_advancements:
-            latest_split = split_name
-    return latest_split
+log_path = os.path.join(settings["minecraft_directory"], "logs", "latest.log")
 
 #define window
 WIDTH = 150
@@ -76,10 +23,30 @@ win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, win32gui.GetWindowLong(hwnd, 
 transparency_color = (255, 0, 128)
 win32gui.SetLayeredWindowAttributes(hwnd, win32api.RGB(*transparency_color), 0, win32con.LWA_COLORKEY)
 win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-
 clock = pygame.time.Clock()
 
-handler = start_watchdog()
+#split tracker function
+split=None
+def split_tracker(split, log_path):
+    with open(log_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        if not lines:
+            return split
+        line = lines[-1]
+        if "Preparing spawn area" in line:
+            split="OWERWORLD"
+        if "made the advancement" in line:
+            if "[We Need to Go Deeper]" in line:
+                split="NETHER"
+            elif "[Those Were the Days]" in line:
+                split="BASTION"
+            elif "[A Terrible Fortress]" in line:
+                split="FORTRESS"
+            elif "[Eye Spy]" in line:
+                split="STRONGHOLD"
+            elif "[The End?]" in line:
+                split="END"
+    return split
 
 while True:
     settings = import_settings()
@@ -88,14 +55,12 @@ while True:
             pygame.quit()
             sys.exit()
 
-    split = split_tracker(handler.player_advancements)
-    if split is not None:
-        split_text = FONT.render(split, True, "#000000")
-    else:
-        split_text = FONT.render("Offline", True, "#000000")
+    split = split_tracker(split, log_path)
+    split_text = FONT.render(split, True, "#000000")
+    split_text_rect = split_text.get_rect(center=(WIDTH//2, HEIGHT//2))
     
     screen.fill(transparency_color)
-    screen.blit(split_text, (0, 0))
+    screen.blit(split_text, split_text_rect)
 
     pygame.display.update()
-    clock.tick(1)
+    clock.tick(20)

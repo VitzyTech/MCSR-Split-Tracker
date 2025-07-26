@@ -32,7 +32,7 @@ def directory_selector():
 
 #tracker launch function
 def launch_tracker():
-    tracker_process = subprocess.Popen(["tracker.exe"], creationflags=subprocess.CREATE_NO_WINDOW)
+    tracker_process = subprocess.Popen(["tracker.py"], creationflags=subprocess.CREATE_NO_WINDOW)
     return tracker_process
 
 while True:
